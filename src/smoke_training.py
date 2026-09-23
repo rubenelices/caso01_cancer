@@ -37,6 +37,7 @@ def verify_artifacts(config: Any, summary: dict[str, Any]) -> dict[str, Any]:
         output_dir / "environment.json",
         output_dir / "history.csv",
         output_dir / "training_curves.png",
+        output_dir / "training_diagnostics.json",
         output_dir / "summary.json",
         checkpoint_dir / "best.pt",
         checkpoint_dir / "last.pt",

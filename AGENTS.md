@@ -45,15 +45,16 @@ protocolo experimental.
 
 ## Politica de Git y archivos grandes
 
-- Nunca anadir `breastdcedl/dataset/` al indice de Git.
+- Nunca anadir ninguna ruta de `breastdcedl/` al indice de Git. El paquete
+  docente completo permanece local por decision del usuario.
 - No versionar checkpoints, pesos, ejecuciones, uploads ni secretos.
 - Antes de un commit, revisar `git status` y comprobar que no aparecen PNG del
   dataset ni ficheros privados.
 - No ejecutar `git add .` sin revisar primero los ficheros candidatos.
 - No hacer commit, push, crear ramas ni reescribir historial salvo peticion
   explicita del usuario.
-- Los metadatos publicos, documentacion, codigo, configuraciones y resultados
-  ligeros si pueden versionarse.
+- Versionar solo nuestro codigo, configuraciones, tests, notebooks y
+  documentacion propia. Los informes regenerables permanecen locales.
 - Distribuir pesos grandes mediante releases o almacenamiento externo cuando se
   decida el mecanismo de despliegue.
 

@@ -28,6 +28,12 @@ from src.data import (
 )
 from src.experiment_config import ExperimentConfig, load_experiment_config
 from src.metrics import cut_and_patient_metrics
+from src.training_report import (
+    build_training_diagnostics,
+    early_learning_signal,
+    save_diagnostics_json,
+    save_training_dashboard,
+)
 
 
 def set_reproducibility(seed: int) -> None:
@@ -159,36 +165,6 @@ def _write_history(path: Path, history: list[dict[str, Any]]) -> None:
         writer = csv.DictWriter(stream, fieldnames=list(history[0]))
         writer.writeheader()
         writer.writerows(history)
-
-
-def _save_curves(history: list[dict[str, Any]], path: Path) -> None:
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib-caso-cancer")
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    epochs = [row["epoch"] for row in history]
-    figure, axes = plt.subplots(1, 2, figsize=(11, 4.2))
-    axes[0].plot(epochs, [row["train_loss"] for row in history], label="Train")
-    axes[0].plot(epochs, [row["validation_loss"] for row in history], label="Validacion")
-    axes[0].set(xlabel="Epoca", ylabel="Loss", title="Curvas de perdida")
-    axes[0].legend()
-    axes[1].plot(
-        epochs,
-        [row["patient_roc_auc"] for row in history],
-        label="ROC-AUC paciente",
-    )
-    axes[1].plot(
-        epochs,
-        [row["patient_pr_auc"] for row in history],
-        label="PR-AUC paciente",
-    )
-    axes[1].set(xlabel="Epoca", ylabel="AUC", ylim=(0, 1), title="Validacion por paciente")
-    axes[1].legend()
-    figure.tight_layout()
-    figure.savefig(path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(figure)
 
 
 def _environment(device: torch.device) -> dict[str, Any]:
@@ -331,6 +307,8 @@ def run_experiment(
             f"{metrics['patient']['roc_auc']:.4f} patient_pr_auc="
             f"{metrics['patient']['pr_auc']:.4f} time={epoch_seconds:.1f}s"
         )
+        if epoch == 5:
+            print(f"Diagnostico epoca 5: {early_learning_signal(history)['message']}")
         if epochs_without_improvement >= config.training.early_stopping_patience:
             print("Early stopping: validacion sin mejora.")
             break
@@ -346,7 +324,17 @@ def run_experiment(
         config.training.threshold,
         use_amp,
     )
-    _save_curves(history, output_dir / "training_curves.png")
+    training_diagnostics = build_training_diagnostics(history, final_metrics, best_epoch)
+    save_training_dashboard(
+        history,
+        final_metrics,
+        best_epoch,
+        output_dir / "training_curves.png",
+    )
+    save_diagnostics_json(
+        training_diagnostics,
+        output_dir / "training_diagnostics.json",
+    )
 
     summary = {
         "status": "complete",
@@ -374,6 +362,7 @@ def run_experiment(
         "positive_weight": positive_weight,
         "validation_loss": final_validation_loss,
         "validation_metrics": final_metrics,
+        "training_diagnostics": training_diagnostics,
         "patients": splits.patient_counts(),
         "samples": splits.sample_counts(),
         "test_evaluated": False,

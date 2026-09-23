@@ -21,10 +21,9 @@ codigo las utilice.
 
 ## Datos
 
-El dataset contiene 38.109 imagenes PNG y se mantiene exclusivamente en local
-dentro de `breastdcedl/dataset/`. Esa carpeta esta ignorada por Git. Los
-metadatos publicos y la documentacion si pueden versionarse porque permiten
-reproducir la estructura y los experimentos sin incluir las imagenes.
+El paquete `breastdcedl/` se mantiene exclusivamente en local e incluye las
+38.109 imagenes, metadatos y documentacion original. Toda la carpeta esta
+ignorada por Git; el repositorio contiene solo nuestro codigo y documentacion.
 
 Este proyecto es exclusivamente educativo y de investigacion. No constituye un
 dispositivo medico ni puede emplearse para diagnostico o decisiones terapeuticas.
@@ -81,6 +80,14 @@ convolucionales y genera un logit por corte. Su explicacion capa por capa,
 incluidos dimensiones, parametros y campo receptivo, esta en
 `notebooks/04_arquitectura_base.ipynb`.
 
+Para verla como diagrama dentro de Visual Studio Code, abre
+`docs/ARQUITECTURA_CNN.md` y activa la vista previa Markdown. Tambien puede
+imprimirse la estructura real de PyTorch sin cargar imagenes ni entrenar:
+
+```bash
+python -m src.inspect_architecture
+```
+
 Antes de ocupar una maquina durante horas puede hacerse un cronometraje corto:
 
 ```bash
@@ -103,6 +110,9 @@ por epoca, curvas y resumen en `reports/experiments/`. Los checkpoints mejor y
 ultimo se guardan aparte en `checkpoints/`, que esta excluida de Git. Durante
 estos experimentos solo se consulta train y validacion interna; test permanece
 cerrado.
+
+La guia `docs/RESULTADOS_ESPERADOS.md` explica que debe observarse en las cinco
+primeras epocas y como leer el panel visual generado al terminar.
 
 ### Smoke test integral
 
