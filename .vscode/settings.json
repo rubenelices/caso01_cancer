@@ -1,0 +1,20 @@
+{
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/breastdcedl/dataset/**": true
+  },
+  "search.exclude": {
+    "**/.git/**": true,
+    "**/breastdcedl/dataset/**": true,
+    "**/__pycache__/**": true
+  },
+  "python.analysis.extraPaths": [
+    "./breastdcedl",
+    "./src"
+  ],
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": [
+    "tests"
+  ]
+}

@@ -216,3 +216,45 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------------------------------------------------------------------------
+# BreastDCEDL: datos locales y artefactos pesados
+# ---------------------------------------------------------------------------
+
+# El paquete docente completo ya existe en cada maquina y nunca se versiona.
+# Incluye imagenes, metadatos, documentacion y utilidades originales.
+breastdcedl/
+descargar_dats.py
+descargar_datos.py
+
+# Posibles copias o paquetes del dataset.
+data/
+datasets/
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Pesos, checkpoints y exportaciones de modelos.
+checkpoints/
+runs/
+wandb/
+mlruns/
+outputs/
+artifacts/models/
+reports/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Datos privados de evaluacion: nunca deben entrar en el repositorio.
+private_validation/
+validation_private/
+private_data/
+
+# Resultados locales regenerables y temporales de la aplicacion.
+uploads/
+tmp/
+*.log
+.DS_Store
