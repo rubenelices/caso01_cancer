@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch import nn
 
-from src.architectures import BreastPCRNet, trainable_parameter_count
+from src.architectures import BaseCNNConfig, BreastPCRNet, trainable_parameter_count
 from src.experiment_config import load_experiment_config
 from src.inspect_architecture import describe_architecture
 from src.metrics import aggregate_by_patient, binary_metrics, cut_and_patient_metrics
@@ -38,6 +38,42 @@ def test_base_architecture_backward_reaches_all_parameters() -> None:
     loss.backward()
     assert all(parameter.grad is not None for parameter in model.parameters())
     assert all(torch.isfinite(parameter.grad).all() for parameter in model.parameters())
+
+
+def test_pool_between_convolutions_preserves_shapes_and_parameters() -> None:
+    config = BaseCNNConfig(pool_position="between_convolutions")
+    model = BreastPCRNet(config)
+    logits = model(torch.zeros(2, 3, 256, 256))
+    assert logits.shape == (2,)
+    assert trainable_parameter_count(model) == 294_129
+    assert [step.shape for step in model.trace_shapes(2)] == [
+        (2, 3, 256, 256),
+        (2, 16, 128, 128),
+        (2, 32, 64, 64),
+        (2, 64, 32, 32),
+        (2, 128, 16, 16),
+        (2, 128, 1, 1),
+        (2, 128),
+        (2,),
+    ]
+
+
+def test_pool_really_runs_between_first_and_second_convolution() -> None:
+    model = BreastPCRNet(BaseCNNConfig(pool_position="between_convolutions"))
+    events: list[str] = []
+    first_block = model.blocks[0]
+    first_block.pool.register_forward_hook(lambda *_: events.append("pool"))
+    first_block.features[3].register_forward_hook(lambda *_: events.append("second_conv"))
+    model(torch.zeros(1, 3, 256, 256))
+    assert events[:2] == ["pool", "second_conv"]
+
+
+def test_pool_between_requires_two_convolutions() -> None:
+    with pytest.raises(ValueError, match="requiere al menos dos"):
+        BaseCNNConfig(
+            convolutions_per_block=1,
+            pool_position="between_convolutions",
+        )
 
 
 def test_patient_aggregation_uses_mean_and_checks_labels() -> None:

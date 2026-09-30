@@ -83,6 +83,12 @@ protocolo experimental.
 
 ## Arquitectura y pedagogia
 
+Por peticion del usuario, toda arquitectura nueva debe tener una carpeta en
+`experimentos/` con README explicativo, diagrama de volumenes PNG y SVG,
+dimensiones y parametros comprobados contra el modelo real. Mantener el
+catalogo `experimentos/README.md` y el generador `src/document_architectures.py`.
+Experimentos que solo cambian la perdida comparten la misma ficha arquitectonica.
+
 Para cada capa o bloque nuevo, documentar:
 
 - Forma de entrada y salida.

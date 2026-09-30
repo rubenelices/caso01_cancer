@@ -19,6 +19,7 @@ class BaseCNNConfig:
     kernel_size: int = 3
     use_batch_norm: bool = True
     dropout: float = 0.30
+    pool_position: str = "after_convolutions"
 
     def __post_init__(self) -> None:
         if not self.channels or any(channel < 1 for channel in self.channels):
@@ -29,6 +30,12 @@ class BaseCNNConfig:
             raise ValueError("kernel_size debe ser impar y positivo")
         if not 0 <= self.dropout < 1:
             raise ValueError("dropout debe estar en [0, 1)")
+        if self.pool_position not in {"after_convolutions", "between_convolutions"}:
+            raise ValueError("pool_position no reconocido")
+        if self.pool_position == "between_convolutions" and self.convolutions_per_block < 2:
+            raise ValueError(
+                "between_convolutions requiere al menos dos convoluciones por bloque"
+            )
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -44,6 +51,7 @@ class ConvBlock(nn.Module):
         convolutions: int,
         kernel_size: int,
         use_batch_norm: bool,
+        pool_position: str,
     ) -> None:
         super().__init__()
         padding = kernel_size // 2
@@ -66,9 +74,20 @@ class ConvBlock(nn.Module):
             current_channels = out_channels
         self.features = nn.Sequential(*layers)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.pool_position = pool_position
+        self.first_convolution_end = 3 if use_batch_norm else 2
 
     def forward(self, image: Tensor) -> Tensor:
-        return self.pool(self.features(image))
+        for layer_index, layer in enumerate(self.features, start=1):
+            image = layer(image)
+            if (
+                self.pool_position == "between_convolutions"
+                and layer_index == self.first_convolution_end
+            ):
+                image = self.pool(image)
+        if self.pool_position == "after_convolutions":
+            image = self.pool(image)
+        return image
 
 
 class BreastPCRNet(nn.Module):
@@ -92,6 +111,7 @@ class BreastPCRNet(nn.Module):
                     convolutions=config.convolutions_per_block,
                     kernel_size=config.kernel_size,
                     use_batch_norm=config.use_batch_norm,
+                    pool_position=config.pool_position,
                 )
             )
             in_channels = out_channels
