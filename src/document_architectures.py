@@ -6,6 +6,7 @@ Las figuras SVG y PNG son documentación propia versionable.
 
 from __future__ import annotations
 
+import argparse
 import math
 from pathlib import Path
 
@@ -164,7 +165,7 @@ def write_sheet(directory: Path, title: str, model: nn.Module, explanation: str,
     (directory / "README.md").write_text(content, encoding="utf-8")
 
 
-def main() -> None:
+def main(only: str | None = None) -> None:
     catalog = [
         ("A01_minima", "A01 · CNN mínima de depuración", MinimalCNN(), [],
          "Tres bloques Conv–ReLU–Pool, canales 8/16/32. Resume a 4×4 y conecta 512 valores a un logit. Su objetivo fue memorizar un subconjunto pequeño para comprobar el cableado; no es una estimación de generalización."),
@@ -175,12 +176,18 @@ def main() -> None:
         ("A03_una_convolucion", "A03 · Una convolución por bloque", "E04_one_conv_normal.json", ["E04_one_conv_normal.json"],
          "Cada bloque hace Conv–BN–ReLU → MaxPool. E04 elimina la segunda convolución para estudiar si reducir capacidad ayuda a generalizar. Obtuvo ROC-AUC 0,5998 en el primer fold y semilla: fue más rápido, pero no mejoró el resultado observado de E02. La diferencia requiere confirmación con más folds o semillas."),
         ("A04_pool_intermedio", "A04 · Pooling entre las convoluciones", "E05_pool_between_convs.json", ["E05_pool_between_convs.json"],
-         "Cada bloque hace Conv–BN–ReLU → MaxPool → Conv–BN–ReLU. Se mueve el único pooling del bloque; no se añade otro al final. Conserva los parámetros y las dimensiones finales de A02, pero la segunda convolución trabaja a menor resolución. Hipótesis: estudiar el efecto de reducir antes de refinar características. E05 está preparado para diez épocas; su resultado está pendiente. Cambiar el presupuesto de nueve a diez épocas frente a los baselines limita la comparación: confirmar candidatos con igual presupuesto."),
+         "Cada bloque hace Conv–BN–ReLU → MaxPool → Conv–BN–ReLU. Se mueve el único pooling del bloque; no se añade otro al final. Conserva los parámetros y las dimensiones finales de A02, pero la segunda convolución trabaja a menor resolución. Hipótesis: estudiar el efecto de reducir antes de refinar características. E05 completó diez épocas: el checkpoint elegido por ROC-AUC fue el de la época 1, con ROC-AUC por paciente 0,6140 y PR-AUC 0,3910. A umbral 0,5 predijo todas las pacientes como negativas; no hay mejora demostrada de generalización. Cambiar el presupuesto de nueve a diez épocas frente a los baselines limita la comparación: confirmar candidatos con igual presupuesto."),
+        ("A05_cinco_bloques", "A05 · Cinco bloques con pooling intermedio", "E06_five_blocks_normal.json", ["E06_five_blocks_normal.json"],
+         "Se añade un quinto bloque de 128 canales a A04/E05: Conv–BN–ReLU → MaxPool → Conv–BN–ReLU. Son diez convoluciones y cinco MaxPool, con resolución 256 → 128 → 64 → 32 → 16 → 8. No se amplía a 256 canales para no cambiar profundidad y anchura a la vez. Hipótesis: el bloque extra combina información de una región mayor antes del promedio global. El campo receptivo local aumenta de 106×106 a 218×218; es teórico, no una medida de atención ni una explicación causal. El riesgo es aumentar sobreajuste o perder detalle espacial. Se mantienen todos los ajustes de entrenamiento de E05, incluido learning rate inicial 0,001, BCE normal, seed 42, fold 0 y diez épocas. El scheduler puede reducir el learning rate durante el entrenamiento. Resultado científico pendiente; más capas no garantizan alcanzar ROC-AUC 0,7. Comparación y criterio de confirmación en [el protocolo](../PROTOCOLO_COMPARACION.md)."),
     ]
     for folder, title, config, configs, explanation in specifications:
         loaded = load_experiment_config(ROOT / "configs/experiments" / config)
         catalog.append((folder, title, BreastPCRNet(loaded.model), configs, explanation))
+    if only is not None and only not in {entry[0] for entry in catalog}:
+        raise ValueError(f"Arquitectura desconocida: {only}")
     for folder, title, model, configs, explanation in catalog:
+        if only is not None and folder != only:
+            continue
         directory = ROOT / "experimentos" / folder
         directory.mkdir(parents=True, exist_ok=True)
         steps = trace(model)
@@ -191,4 +198,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--only", help="Regenerar solo una carpeta, por ejemplo A05_cinco_bloques")
+    main(parser.parse_args().only)
