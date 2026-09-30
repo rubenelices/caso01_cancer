@@ -1,0 +1,34 @@
+{
+  "experiment_id": "E08_weight_decay_001",
+  "description": "Regularizacion sobre E05: solo aumenta weight decay de 0.0001 a 0.001; conserva dropout 0.3",
+  "data": {
+    "root": "breastdcedl",
+    "validation_fold": 0,
+    "batch_size": 16,
+    "num_workers": 4,
+    "pin_memory": true
+  },
+  "model": {
+    "channels": [16, 32, 64, 128],
+    "convolutions_per_block": 2,
+    "kernel_size": 3,
+    "use_batch_norm": true,
+    "dropout": 0.3,
+    "pool_position": "between_convolutions"
+  },
+  "training": {
+    "epochs": 10,
+    "learning_rate": 0.001,
+    "weight_decay": 0.001,
+    "loss": "normal",
+    "threshold": 0.5,
+    "seed": 42,
+    "early_stopping_patience": 10,
+    "scheduler_patience": 3,
+    "scheduler_factor": 0.5,
+    "monitor": "patient_roc_auc",
+    "mixed_precision": true
+  },
+  "output_dir": "reports/experiments/E08_weight_decay_001/fold_0_seed_42",
+  "checkpoint_dir": "checkpoints/E08_weight_decay_001/fold_0_seed_42"
+}
