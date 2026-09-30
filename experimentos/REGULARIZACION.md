@@ -28,10 +28,13 @@ entrenamiento menor: interesa la generalización por paciente.
 |---|---:|---:|---:|---|
 | E05 | 0,614012 | 0,390992 | 1 | Ejecutado, fold 0 / seed 42 |
 | E06 | 0,574647 | 0,367224 | 6 | Ejecutado, fold 0 / seed 42; no mejoró en esta ejecución |
-| E07 | — | — | — | Configurado; pendiente de entrenamiento completo |
+| E07 | 0,595565 | 0,368886 | 1 | Ejecutado, fold 0 / seed 42; no mejoró E05 en esta ejecución |
 | E08 | — | — | — | Configurado; pendiente de entrenamiento completo |
 
 Los resultados E05/E06 proceden de las salidas compartidas por el estudiante.
+E07 también completó diez épocas: su mejor checkpoint predijo todas las
+pacientes como negativas a umbral 0,5. El dropout mayor no mejoró ROC-AUC ni
+PR-AUC en esta ejecución; no se extrapola a otras semillas o folds.
 E06 no es el control directo de estos ensayos: tiene un quinto bloque y
 589.553 parámetros. Sus losses train/validación pasaron de 0,6090/0,6057 a
 0,1355/1,5563, compatibles con un sobreajuste marcado. Ambas ejecuciones

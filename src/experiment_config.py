@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from src.architectures import BaseCNNConfig
+from src.augmentation import AugmentationConfig
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,7 @@ class DataExperimentConfig:
     pin_memory: bool = True
     train_patients_per_class: int | None = None
     validation_patients_per_class: int | None = None
+    augmentation: AugmentationConfig = field(default_factory=AugmentationConfig)
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -66,7 +68,9 @@ class ExperimentConfig:
 
 def load_experiment_config(path: str | Path) -> ExperimentConfig:
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    data = DataExperimentConfig(**raw["data"])
+    data_raw = dict(raw["data"])
+    augmentation = AugmentationConfig(**data_raw.pop("augmentation", {}))
+    data = DataExperimentConfig(**data_raw, augmentation=augmentation)
     model_raw = dict(raw["model"])
     model_raw["channels"] = tuple(model_raw["channels"])
     model = BaseCNNConfig(**model_raw)

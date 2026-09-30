@@ -18,6 +18,7 @@ import torch
 from torch import Tensor, nn
 
 from src.architectures import BreastPCRNet, parameter_breakdown, trainable_parameter_count
+from src.augmentation import build_train_transform
 from src.data import (
     LoaderConfig,
     create_dataloaders,
@@ -222,7 +223,10 @@ def run_experiment(
         persistent_workers=config.data.num_workers > 0,
         seed=config.training.seed,
     )
-    loaders = create_dataloaders(splits, config.data.root, loader_config)
+    loaders = create_dataloaders(
+        splits, config.data.root, loader_config,
+        train_transform=build_train_transform(config.data.augmentation),
+    )
 
     model = BreastPCRNet(config.model).to(device)
     criterion, positive_weight = build_criterion(config, splits.train, device)

@@ -1,0 +1,39 @@
+{
+  "experiment_id": "E09_shared_affine",
+  "description": "E05 con aumentos geometricos sincronizados solo en train: rotacion hasta 5 grados y traslacion hasta 3 por ciento",
+  "data": {
+    "root": "breastdcedl",
+    "validation_fold": 0,
+    "batch_size": 16,
+    "num_workers": 4,
+    "pin_memory": true,
+    "augmentation": {
+      "enabled": true,
+      "max_rotation_degrees": 5.0,
+      "max_translation_fraction": 0.03
+    }
+  },
+  "model": {
+    "channels": [16, 32, 64, 128],
+    "convolutions_per_block": 2,
+    "kernel_size": 3,
+    "use_batch_norm": true,
+    "dropout": 0.3,
+    "pool_position": "between_convolutions"
+  },
+  "training": {
+    "epochs": 10,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "loss": "normal",
+    "threshold": 0.5,
+    "seed": 42,
+    "early_stopping_patience": 10,
+    "scheduler_patience": 3,
+    "scheduler_factor": 0.5,
+    "monitor": "patient_roc_auc",
+    "mixed_precision": true
+  },
+  "output_dir": "reports/experiments/E09_shared_affine/fold_0_seed_42",
+  "checkpoint_dir": "checkpoints/E09_shared_affine/fold_0_seed_42"
+}
