@@ -67,7 +67,11 @@ class ExperimentConfig:
 
 
 def load_experiment_config(path: str | Path) -> ExperimentConfig:
-    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    return experiment_config_from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
+
+
+def experiment_config_from_dict(raw: dict[str, Any]) -> ExperimentConfig:
+    """Mismo contrato para JSON y configuraciones guardadas en checkpoints."""
     data_raw = dict(raw["data"])
     augmentation = AugmentationConfig(**data_raw.pop("augmentation", {}))
     data = DataExperimentConfig(**data_raw, augmentation=augmentation)

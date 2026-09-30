@@ -35,6 +35,11 @@ Para regenerar únicamente una ficha: `python -m src.document_architectures --on
 - [E09 · Giros y traslaciones compartidos](E09_shared_affine/README.md): misma CNN de E05; no modifica validación ni web.
 - [Protocolo, pruebas y vista original/aumentada](AUMENTOS_E09.md).
 
+## Diagnóstico de checkpoints
+
+[Train frente a validación y sensibilidad a BatchNorm](DIAGNOSTICO.md): análisis
+sin volver a entrenar ni tocar test. Comienza con el mejor checkpoint de E05.
+
 Toda arquitectura nueva debe incorporarse a este catálogo con hipótesis, orden de operaciones, dimensiones, parámetros, campo receptivo y configuraciones asociadas. Los resultados por paciente se guardan en `reports/`, que permanece fuera de Git.
 
 Uso educativo y de investigación, sin validez clínica.
