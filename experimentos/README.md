@@ -35,11 +35,29 @@ Para regenerar únicamente una ficha: `python -m src.document_architectures --on
 - [E09 · Giros y traslaciones compartidos](E09_shared_affine/README.md): misma CNN de E05; no modifica validación ni web.
 - [Protocolo, pruebas y vista original/aumentada](AUMENTOS_E09.md).
 
-## Diagnóstico de checkpoints
+## Learning rate
+
+- [E11 · LR inicial 0,0003](E11_lr_0003/README.md) y [E12 · LR inicial 0,0001](E12_lr_0001/README.md): misma arquitectura de E05 Mac, sin otros cambios de ajustes.
+- [Hipótesis, comandos y comparación](LEARNING_RATE.md).
+
+## Registro y diagnósticos
+
+- [Notebook 05 · Diario de experimentos y resultados](../notebooks/05_resultados_experimentos.ipynb): tablas históricas, curvas locales, diagnóstico BN y cohortes; no entrena ni abre test.
+- [Respaldo agregado de las cifras comunicadas](resultados_registrados.json): identifica fuente, plataforma y ejecución; no contiene datos individuales.
+- [Respaldo agregado por cohorte](cohortes_registradas.json): conserva las comparaciones E08/E10 y E05/E08/E10 sin archivos de pacientes.
+
+- [Referencia E05 en Mac y diagnóstico por cohorte](COHORTES_Y_REFERENCIA_MAC.md): replica con rutas separadas y comparación de predicciones existentes sin leer imágenes.
+
+- [A06 · Mitad de canales, misma profundidad](A06_mitad_canales/README.md): E10 reduce capacidad manteniendo las ocho convoluciones de E05.
+- [E10 · Hipótesis, comparación y ejecución en Mac](ANCHURA_E10.md).
 
 [Train frente a validación y sensibilidad a BatchNorm](DIAGNOSTICO.md): análisis
 sin volver a entrenar ni tocar test. Comienza con el mejor checkpoint de E05.
 
 Toda arquitectura nueva debe incorporarse a este catálogo con hipótesis, orden de operaciones, dimensiones, parámetros, campo receptivo y configuraciones asociadas. Los resultados por paciente se guardan en `reports/`, que permanece fuera de Git.
+
+- [E13 · Realce explícito entre fases](E13_phase_differences/README.md): misma CNN y ajustes E05 Mac; operación fija PRE, EARLY−PRE, LATE−EARLY dentro del modelo, sin parámetros nuevos.
+- [Protocolo y ejecución E13](REALCE_E13.md): compatibilidad train/evaluación/web, prueba técnica y comparación prevista.
+- [Diagnóstico E13](DIAGNOSTICO_E13.md): diferencia train/validación y copia BatchNorm; sin entrenamiento ni test.
 
 Uso educativo y de investigación, sin validez clínica.

@@ -1,20 +1,21 @@
-# E08 · Cuatro bloques y weight decay 0,001
+# E13 · Realce explícito entre fases
 
 ![Diagrama de la arquitectura](arquitectura.png)
 
-La arquitectura es exactamente A04/E05, con dropout 0,3; el dibujo se repite aquí para que el experimento tenga su ficha completa. Solo se cambia el weight decay de AdamW de 0,0001 a 0,001. No es una capa nueva: modifica la actualización de los pesos durante entrenamiento mediante decaimiento desacoplado. Hipótesis: una regularización mayor de los pesos puede reducir el sobreajuste; su utilidad se mide en validación, no por lograr una menor loss de train. Se mantienen learning rate inicial 0,001, BCE normal, seed 42, fold 0 y diez épocas. E08 no combina este cambio con el dropout 0,5 de E07. E08 completó diez épocas en Mac MPS: mejor época 3, ROC-AUC 0,582661 y AP 0,355411. Frente a E05 Mac, el intervalo pareado global incluye cero; no hay mejora clara. Ver [comparación E05/E07/E08](../REGULARIZACION.md).
+La entrada externa sigue siendo PRE/EARLY/LATE en [0,1], con forma [3,256,256]. Dentro del modelo una operación fija conserva PRE y calcula EARLY−PRE y LATE−EARLY: tres canales, cero parámetros nuevos y sin recortar negativos. Las ocho convoluciones, cuatro MaxPool, BatchNorm, GAP y dropout son los de A04/E05; total 294.129 parámetros y campo receptivo local 106×106. Se conserva LR inicial 0,001 y todos los ajustes de E05 Mac. Es un cambio de representación invertible, no información nueva ni una CNN más grande: EARLY=PRE+(EARLY−PRE), LATE=EARLY+(LATE−EARLY). Hipótesis: presentar directamente los cambios temporales podría facilitar optimización. La primera convolución original ya podría aprender restas, por lo que no hay mejora garantizada. Las escalas/correlaciones de entrada cambian y pueden afectar la optimización y BatchNorm; esto forma parte del experimento. E13 completó diez épocas en Mac MPS: mejor época 10, ROC-AUC 0,572480 y AP 0,350860; 421,48 segundos. No supera la referencia E05 Mac (ROC-AUC 0,586895). El mejor checkpoint al final no demuestra convergencia ni que más épocas ayuden; revisar diagnóstico train/validación antes de decidir. Ver [protocolo E13](../REALCE_E13.md).
 
 Total: **294.129 parámetros entrenables**.
 
 Configuraciones asociadas:
 
-- [E08_weight_decay_001.json](../../configs/experiments/E08_weight_decay_001.json)
+- [E13_phase_differences.json](../../configs/experiments/E13_phase_differences.json)
 
 ## Recorrido de las capas
 
 | Operación | Salida por corte | Parámetros de la operación | Detalle |
 |---|---|---:|---|
 | Entrada · 3 fases DCE | `(3, 256, 256)` | 0 | 3 fases temporales |
+| PRE · EARLY−PRE · LATE−EARLY | `(3, 256, 256)` | 0 | restas fijas; sin clipping, pesos, kernel ni cambio espacial |
 | Conv 3×3 · BN + ReLU | `(16, 256, 256)` | 432 | kernel=3, padding=1, stride=1 |
 | MaxPool · 2×2 | `(16, 128, 128)` | 0 | kernel=2, padding=0, stride=2 |
 | Conv 3×3 · BN + ReLU | `(16, 128, 128)` | 2304 | kernel=3, padding=1, stride=1 |

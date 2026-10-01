@@ -328,6 +328,34 @@ def run_experiment(
         config.training.threshold,
         use_amp,
     )
+    # Se hace una segunda pasada secuencial para conservar sample_id y
+    # patient_id. Test permanece cerrado y nunca se itera en este runner.
+    from src.evaluation import (
+        EvaluationConfig,
+        collect_cut_predictions,
+        save_evaluation_artifacts,
+    )
+
+    validation_predictions = collect_cut_predictions(
+        model,
+        loaders.validation,
+        device,
+        use_amp=use_amp,
+    )
+    evaluation_summary = save_evaluation_artifacts(
+        validation_predictions,
+        output_dir,
+        EvaluationConfig(
+            threshold=config.training.threshold,
+            aggregation="mean",
+            seed=config.training.seed,
+        ),
+    )
+    evaluation_summary["experiment_id"] = config.experiment_id
+    evaluation_summary["validation_fold"] = config.data.validation_fold
+    (output_dir / "evaluation_summary.json").write_text(
+        json.dumps(evaluation_summary, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     training_diagnostics = build_training_diagnostics(history, final_metrics, best_epoch)
     save_training_dashboard(
         history,
@@ -366,6 +394,12 @@ def run_experiment(
         "positive_weight": positive_weight,
         "validation_loss": final_validation_loss,
         "validation_metrics": final_metrics,
+        "evaluation_artifacts": {
+            "cut_predictions": "predictions_cut.csv",
+            "patient_predictions": "predictions_patient.csv",
+            "summary": "evaluation_summary.json",
+            "figure": "evaluation_patient.png",
+        },
         "training_diagnostics": training_diagnostics,
         "patients": splits.patient_counts(),
         "samples": splits.sample_counts(),

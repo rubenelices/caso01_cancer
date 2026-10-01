@@ -8,6 +8,7 @@ import torch
 from torch import Tensor, nn
 
 from src.model import ShapeStep
+from src.phase_representation import PhaseRepresentation
 
 
 @dataclass(frozen=True)
@@ -20,8 +21,11 @@ class BaseCNNConfig:
     use_batch_norm: bool = True
     dropout: float = 0.30
     pool_position: str = "after_convolutions"
+    input_representation: str = "raw"
 
     def __post_init__(self) -> None:
+        if self.input_representation not in {"raw", "pre_differences"}:
+            raise ValueError("input_representation no reconocida")
         if not self.channels or any(channel < 1 for channel in self.channels):
             raise ValueError("channels debe contener enteros positivos")
         if self.convolutions_per_block < 1:
@@ -101,6 +105,7 @@ class BreastPCRNet(nn.Module):
     def __init__(self, config: BaseCNNConfig = BaseCNNConfig()) -> None:
         super().__init__()
         self.config = config
+        self.input_transform = PhaseRepresentation(config.input_representation)
         blocks: list[nn.Module] = []
         in_channels = 3
         for out_channels in config.channels:
@@ -136,6 +141,7 @@ class BreastPCRNet(nn.Module):
                 nn.init.zeros_(module.bias)
 
     def forward(self, image: Tensor) -> Tensor:
+        image = self.input_transform(image)
         for block in self.blocks:
             image = block(image)
         image = self.global_pool(image)
@@ -148,6 +154,9 @@ class BreastPCRNet(nn.Module):
         device = next(self.parameters()).device
         image = torch.zeros(batch_size, 3, 256, 256, device=device)
         trace = [ShapeStep("entrada", tuple(image.shape))]
+        image = self.input_transform(image)
+        if self.config.input_representation != "raw":
+            trace.append(ShapeStep("PRE, EARLY-PRE, LATE-EARLY", tuple(image.shape)))
         for index, block in enumerate(self.blocks, start=1):
             image = block(image)
             trace.append(ShapeStep(f"bloque {index}", tuple(image.shape)))

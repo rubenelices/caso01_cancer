@@ -1,14 +1,14 @@
-# E08 · Cuatro bloques y weight decay 0,001
+# E12 · Learning rate inicial 0,0001
 
 ![Diagrama de la arquitectura](arquitectura.png)
 
-La arquitectura es exactamente A04/E05, con dropout 0,3; el dibujo se repite aquí para que el experimento tenga su ficha completa. Solo se cambia el weight decay de AdamW de 0,0001 a 0,001. No es una capa nueva: modifica la actualización de los pesos durante entrenamiento mediante decaimiento desacoplado. Hipótesis: una regularización mayor de los pesos puede reducir el sobreajuste; su utilidad se mide en validación, no por lograr una menor loss de train. Se mantienen learning rate inicial 0,001, BCE normal, seed 42, fold 0 y diez épocas. E08 no combina este cambio con el dropout 0,5 de E07. E08 completó diez épocas en Mac MPS: mejor época 3, ROC-AUC 0,582661 y AP 0,355411. Frente a E05 Mac, el intervalo pareado global incluye cero; no hay mejora clara. Ver [comparación E05/E07/E08](../REGULARIZACION.md).
+La arquitectura es A04/E05, idéntica a E11. El único ajuste modificado respecto a E05 Mac es el learning rate inicial de AdamW: 0,001 → 0,0001. Se mantienen datos completos, fold 0, seed 42, batch 16, diez épocas, BCE normal, dropout 0,3, weight decay 0,0001 y scheduler. No hay aumentos ni pesos preentrenados. La comparación inicial usa igual presupuesto, pero no supone convergencia idéntica; decidir una prueba más larga por separado si aún mejora al terminar. E12 completó diez épocas en Mac MPS: mejor época 3, ROC-AUC 0,557964 y AP 0,386688; 481,87 segundos. No superó el ROC-AUC de E05 Mac (0,586895). La AP algo mayor no cambia nuestro criterio de selección; el sobreajuste persiste. Ver [protocolo de learning rate](../LEARNING_RATE.md).
 
 Total: **294.129 parámetros entrenables**.
 
 Configuraciones asociadas:
 
-- [E08_weight_decay_001.json](../../configs/experiments/E08_weight_decay_001.json)
+- [E12_lr_0001.json](../../configs/experiments/E12_lr_0001.json)
 
 ## Recorrido de las capas
 

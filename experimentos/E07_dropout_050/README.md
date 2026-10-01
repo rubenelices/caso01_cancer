@@ -2,7 +2,7 @@
 
 ![Diagrama de la arquitectura](arquitectura.png)
 
-Variante de regularización de A04/E05: se cambia únicamente el dropout de 0,3 a 0,5 en el vector de 128 características, después del promedio global. Durante entrenamiento anula aleatoriamente componentes de ese vector; en evaluación está desactivado. No elimina convoluciones, no reduce canales y no añade parámetros. Hipótesis: dificultar la dependencia de características concretas puede reducir el sobreajuste; también podría empeorar por regularización excesiva. Se conserva weight decay 0,0001, learning rate inicial 0,001, BCE normal, seed 42, fold 0 y diez épocas. Resultado científico pendiente. Ver [comparación E05/E07/E08](../REGULARIZACION.md).
+Variante de regularización de A04/E05: se cambia únicamente el dropout de 0,3 a 0,5 en el vector de 128 características, después del promedio global. Durante entrenamiento anula aleatoriamente componentes de ese vector; en evaluación está desactivado. No elimina convoluciones, no reduce canales y no añade parámetros. Hipótesis: dificultar la dependencia de características concretas puede reducir el sobreajuste; también podría empeorar por regularización excesiva. Se conserva weight decay 0,0001, learning rate inicial 0,001, BCE normal, seed 42, fold 0 y diez épocas. E07 completó diez épocas en universidad: mejor época 1, ROC-AUC 0,595565 y AP 0,368886; no superó el resultado observado de E05. Ver [comparación E05/E07/E08](../REGULARIZACION.md).
 
 Total: **294.129 parámetros entrenables**.
 

@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "experiment_id": "E13_phase_differences",
+  "checkpoint_epoch": 10,
+  "sha256": "0d3fd4ba9ddec6caab9f343e9dee99eccdb8fbc4a37ddacc0d2edf8b6a17c768",
+  "scope": "train_and_internal_validation_only",
+  "technical_subset": false,
+  "test_evaluated": false,
+  "checkpoint_unchanged": true,
+  "original_model_unchanged": true,
+  "patients": {
+    "train": 878,
+    "validation": 219
+  },
+  "environment": {
+    "python": "3.13.5",
+    "torch": "2.11.0",
+    "device": "mps",
+    "rocm_hip": null,
+    "gpu": null
+  },
+  "batch_size": 16,
+  "num_workers": 0,
+  "seconds": 279.3191840420004,
+  "comparison": {
+    "train_minus_validation_auc_original": 0.21571721055263804,
+    "validation_auc_change_after_bn": -0.014516129032258185,
+    "paired_delta_interval": {
+      "method": "stratified_paired_patient_bootstrap",
+      "repetitions": 500,
+      "confidence_level": 0.95,
+      "lower": -0.02979082661290322,
+      "upper": -0.0009551411290322216,
+      "warning": "Exploratorio en el fold de desarrollo; no corrige selección de checkpoint ni múltiples ensayos"
+    },
+    "mean_absolute_patient_probability_change": 0.04231119456688046,
+    "decision": "No elegir automáticamente; revisar métricas, distribuciones y estabilidad en otras semillas/folds"
+  },
+  "patient_metrics": {
+    "train_original": {
+      "n": 878,
+      "threshold": 0.5,
+      "accuracy": 0.7642369020501139,
+      "balanced_accuracy": 0.6848337084271068,
+      "precision": 0.625615763546798,
+      "sensitivity": 0.49224806201550386,
+      "specificity": 0.8774193548387097,
+      "f1": 0.5509761388286334,
+      "roc_auc": 0.7881970492623155,
+      "pr_auc": 0.6203406094553594,
+      "brier_score": 0.16780450523455476,
+      "confusion_matrix": {
+        "tn": 544,
+        "fp": 76,
+        "fn": 131,
+        "tp": 127
+      }
+    },
+    "validation_original": {
+      "n": 219,
+      "threshold": 0.5,
+      "accuracy": 0.6666666666666666,
+      "balanced_accuracy": 0.5351814516129032,
+      "precision": 0.3783783783783784,
+      "sensitivity": 0.21875,
+      "specificity": 0.8516129032258064,
+      "f1": 0.27722772277227725,
+      "roc_auc": 0.5724798387096774,
+      "pr_auc": 0.35085981566730545,
+      "brier_score": 0.22183979618619548,
+      "confusion_matrix": {
+        "tn": 132,
+        "fp": 23,
+        "fn": 50,
+        "tp": 14
+      }
+    },
+    "train_bn_recalibrated": {
+      "n": 878,
+      "threshold": 0.5,
+      "accuracy": 0.7596810933940774,
+      "balanced_accuracy": 0.6487934483620905,
+      "precision": 0.6577181208053692,
+      "sensitivity": 0.3798449612403101,
+      "specificity": 0.917741935483871,
+      "f1": 0.48157248157248156,
+      "roc_auc": 0.8036446611652913,
+      "pr_auc": 0.6363333030007559,
+      "brier_score": 0.15945873535841223,
+      "confusion_matrix": {
+        "tn": 569,
+        "fp": 51,
+        "fn": 160,
+        "tp": 98
+      }
+    },
+    "validation_bn_recalibrated": {
+      "n": 219,
+      "threshold": 0.5,
+      "accuracy": 0.7077625570776256,
+      "balanced_accuracy": 0.5642137096774194,
+      "precision": 0.5,
+      "sensitivity": 0.21875,
+      "specificity": 0.9096774193548387,
+      "f1": 0.30434782608695654,
+      "roc_auc": 0.5579637096774193,
+      "pr_auc": 0.3442834232731754,
+      "brier_score": 0.22302113354057274,
+      "confusion_matrix": {
+        "tn": 141,
+        "fp": 14,
+        "fn": 50,
+        "tp": 14
+      }
+    }
+  }
+}

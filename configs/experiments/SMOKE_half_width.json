@@ -1,0 +1,36 @@
+{
+  "experiment_id": "SMOKE_half_width",
+  "description": "Prueba tecnica de E10; no mide generalizacion",
+  "data": {
+    "root": "breastdcedl",
+    "validation_fold": 0,
+    "batch_size": 4,
+    "num_workers": 0,
+    "pin_memory": false,
+    "train_patients_per_class": 4,
+    "validation_patients_per_class": 2
+  },
+  "model": {
+    "channels": [8, 16, 32, 64],
+    "convolutions_per_block": 2,
+    "kernel_size": 3,
+    "use_batch_norm": true,
+    "dropout": 0.3,
+    "pool_position": "between_convolutions"
+  },
+  "training": {
+    "epochs": 2,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "loss": "normal",
+    "threshold": 0.5,
+    "seed": 42,
+    "early_stopping_patience": 2,
+    "scheduler_patience": 1,
+    "scheduler_factor": 0.5,
+    "monitor": "patient_roc_auc",
+    "mixed_precision": false
+  },
+  "output_dir": "reports/smoke_training/half_width",
+  "checkpoint_dir": "checkpoints/smoke_training/half_width"
+}

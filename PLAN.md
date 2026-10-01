@@ -156,10 +156,10 @@ Configuracion inicial que debe validarse experimentalmente:
 - Checkpoint elegido exclusivamente con validacion interna.
 
 - [x] Superar un smoke test integral sobre un subconjunto por paciente.
-- [ ] Registrar perdida y metricas por epoca.
-- [ ] Medir tiempo por epoca, tiempo total y memoria GPU.
-- [ ] Guardar mejor y ultimo checkpoint por separado.
-- [ ] Crear graficas de aprendizaje y diagnosticar overfitting.
+- [x] Registrar perdida y metricas por epoca.
+- [x] Medir tiempo por epoca, tiempo total y memoria GPU cuando esté disponible.
+- [x] Guardar mejor y ultimo checkpoint por separado.
+- [x] Crear graficas de aprendizaje y diagnosticar overfitting.
 
 ### Fase 6 - Experimentos controlados
 
@@ -181,6 +181,11 @@ Orden propuesto:
 
 Solo las configuraciones prometedoras pasan a validacion completa de cinco
 folds. No se realizan barridos masivos sin una hipotesis clara.
+
+La tabla anterior era la propuesta inicial; las identidades realmente utilizadas
+y sus resultados E02-E10 se consultan en `experimentos/resultados_registrados.json`
+y `notebooks/05_resultados_experimentos.ipynb`. No confundir los ID propuestos
+en ese esquema con los archivos de configuración definitivos.
 
 ### Fase 7 - Aumentos de datos
 
@@ -224,7 +229,11 @@ Metricas principales:
 - [ ] Comparar umbral 0,5 con umbral elegido en validacion.
 - [ ] Estudiar temperature scaling si la calibracion lo necesita.
 - [ ] Analizar falsos positivos y falsos negativos.
-- [ ] Separar claramente metricas por corte y por paciente.
+- [x] Separar claramente metricas por corte y por paciente.
+- [x] Implementar predicciones trazables, curvas e intervalos bootstrap por
+  paciente sobre validacion interna, pendientes de ejecutar con E02 y E03.
+- [x] Implementar comparacion pareada y reproducible de E02 frente a E03 sobre
+  exactamente las mismas pacientes.
 
 ### Fase 10 - Interpretabilidad
 
@@ -236,16 +245,20 @@ Metricas principales:
 
 ### Fase 11 - Aplicacion web
 
-- [ ] Cargar exactamente PRE, EARLY y LATE.
-- [ ] Validar formato, firma, tamano, dimensiones y duplicados.
-- [ ] Mostrar las tres fases y el mapa EARLY-PRE.
-- [ ] Ejecutar `model.eval()` sin gradientes.
-- [ ] Mostrar probabilidad, clase y umbral.
-- [ ] Mostrar checksum del modelo, dispositivo y latencia.
+- [x] Cargar exactamente PRE, EARLY y LATE.
+- [x] Validar formato, firma, tamano, dimensiones y duplicados.
+- [x] Mostrar las tres fases y el mapa EARLY-PRE.
+- [x] Ejecutar `model.eval()` sin gradientes.
+- [x] Mostrar probabilidad, clase y umbral.
+- [x] Mostrar checksum del modelo, dispositivo y latencia.
 - [ ] Mostrar configuracion y metricas internas.
-- [ ] Incluir aviso educativo y ausencia de validez clinica.
+- [x] Incluir aviso educativo y ausencia de validez clinica.
 - [ ] Desplegar en una URL accesible desde otro equipo.
 - [ ] Probar cinco cargas consecutivas sin reinicio ni cambios de codigo.
+
+La interfaz se implementa en HTML/CSS/JavaScript por preferencia del estudiante.
+Un servidor Python local conecta las cargas con el modelo PyTorch; el destino de
+despliegue se decidira tras validar el modelo.
 
 ### Fase 12 - Entrega y defensa
 
@@ -302,9 +315,35 @@ revierte, se anade una nueva fila que explique por que.
 | 2026-09-23 | Completar la auditoria antes de implementar la CNN | 38.109 imagenes validadas, 0 errores criticos | Completada |
 | 2026-09-23 | Usar una unica funcion para Dataset y futura web | Rutas y bytes producen tensores identicos en tests | Aceptada |
 | 2026-09-23 | Validar el aprendizaje con una CNN minima de 6.545 parametros | 100 % sobre 24 muestras, loss final 0,0502 y gradientes finitos | Completada |
+| 2026-09-25 | Hacer bootstrap y comparacion E02/E03 de forma pareada por paciente | La paciente es la unidad independiente y ambos modelos comparten fold | Implementada; pendiente de resultados |
+| 2026-09-25 | Reutilizar `load_dce_triplet` tambien desde la web | Evita discrepancias PRE/EARLY/LATE entre evaluacion y despliegue | Implementada |
+| 2026-09-25 | Usar HTML/CSS/JavaScript para la interfaz web | Preferencia explicita del estudiante; Flask conserva el pipeline PyTorch compartido | Implementada localmente; despliegue pendiente |
+| 2026-09-30 | Repetir E05 en Mac con rutas separadas antes de comparar ablaciones entre dispositivos | E08/E10 en MPS no mejoraron el resultado observado de E05 en ROCm; precisión y plataforma distintas | Configurada; entrenamiento pendiente |
+| 2026-09-30 | Analizar validación por cohorte sin alterar umbral, agregación ni CNN | E08/E10: delta AUC 0,007964 con IC pareado que incluye cero; spy1 solo tiene cuatro positivas | Informe exploratorio local y 77 pruebas; test cerrado |
+| 2026-09-30 | Cerrar la comparación E05/E08/E10 en Mac y conservar métricas | E05 Mac AUC 0,586895; diferencias E08/E10 frente a referencia con IC globales que incluyen cero | Referencia completa, cohortes y notebook actualizados; no se inicia otro experimento |
+| 2026-10-01 | Probar LR inicial 0,0003 y 0,0001 manteniendo E05 Mac | LR 0,001 es recomendación, no requisito; hipótesis de actualizaciones menores | E11/E12 completos: AUC 0,550202/0,557964, mejores épocas 2/3; no superan E05 Mac y persiste sobreajuste |
+| 2026-10-01 | Probar diferencias firmadas entre fases en E13 | Petición de continuar: misma CNN E05 Mac y mismos ajustes; solo cambiar representación | Implementado dentro del modelo con cero parámetros nuevos; smoke completo superado, entrenamiento científico pendiente |
 
 ## 9. Siguiente accion
 
-Estudiar y poder explicar la CNN minima mediante el notebook de la Fase 3. A
-continuacion, iniciar la Fase 4: disenar la arquitectura base, calcular sus
-dimensiones y parametros y justificar cada bloque antes de entrenarla.
+El registro de experimentos, el notebook de resultados y la comparación por
+cohorte están actualizados. E05 Mac, E08 y E10 han terminado y no muestran
+una mejora global clara en este fold. El objetivo ROC-AUC 0,7 sigue sin
+alcanzarse; no hay arquitectura definitiva ni test evaluado.
+
+El estudiante ha retomado la mejora y acordado probar dos learning rates
+iniciales menores: E11/E12, sin cambiar otra variable principal de E05 Mac.
+Ambas ejecuciones ya han terminado y se han registrado con sus curvas locales.
+La reducción del LR no mejoró el ROC-AUC observado; no prolongar por defecto.
+E13 está preparado: PRE, EARLY−PRE, LATE−EARLY dentro del modelo, conservando
+la CNN y ajustes E05 Mac. Protocolo en `experimentos/REALCE_E13.md` y ficha
+PNG/SVG en `experimentos/E13_phase_differences/`. Smoke de dos épocas CPU
+con 8/4 pacientes train/validación completado en 4,10 s, sin evaluar test.
+El estudiante completó E13: diez épocas MPS, mejor época 10, ROC-AUC
+0,572480, AP 0,350860 y 421,48 s; no supera E05 Mac. Registro/notebook
+actualizados. Ha autorizado diagnosticar train/validación antes de elegir
+prolongación o cambio estructural. Test cerrado y sin commit/push.
+Diagnóstico ya completado en MPS: train AUC 0,788197 vs validación 0,572480;
+copia BN validación 0,557964. No resuelve la generalización; documentación
+en `experimentos/DIAGNOSTICO_E13.md`. No hay autorización para otro modelo
+ni entrenamiento largo; acordar una hipótesis controlada de generalización.
