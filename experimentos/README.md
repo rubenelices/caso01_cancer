@@ -9,8 +9,13 @@ Cada carpeta reúne una arquitectura distinta, su explicación y un dibujo del r
 | [A03 · Una convolución](A03_una_convolucion/README.md) | E04 | Conv → Pool | 97.809 |
 | [A04 · Pool intermedio](A04_pool_intermedio/README.md) | E05, E07/E08 (regularización), E09 (aumentos) | Conv → Pool → Conv | 294.129 |
 | [A05 · Cinco bloques](A05_cinco_bloques/README.md) | E06 | Conv → Pool → Conv, quinto bloque añadido | 589.553 |
+| [E14 · Dropout espacial 0,1](E14_spatial_dropout_010/README.md) | E14 | Conv → Pool → Conv → Dropout2d 0,1 | 294.129 |
+| [E15 · Dropout espacial 0,2](E15_spatial_dropout_020/README.md) | E15 | Conv → Pool → Conv → Dropout2d 0,2 | 294.129 |
 
 En A02, A03, A04 y A05 cada convolución va seguida de BatchNorm y ReLU. E02 y E03 usan la misma red con pérdidas distintas, así que no duplicamos su dibujo. Las alturas y anchuras de los volúmenes son esquemáticas: las dimensiones exactas aparecen bajo cada capa.
+
+E14/E15 mantienen BatchNorm y ReLU tras cada convolución; el Dropout2d se aplica
+al final del bloque, solo durante train. [Hipótesis, controles y comandos](DROPOUT_ESPACIAL.md).
 
 Abre la vista previa del README de cada carpeta en Visual Studio Code. Cada ficha incluye `arquitectura.png` para presentaciones y `arquitectura.svg` para ampliar sin perder calidad.
 

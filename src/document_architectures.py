@@ -13,6 +13,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+matplotlib.rcParams["svg.hashsalt"] = "breastpcr-architectures-v1"
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon, FancyBboxPatch
 import torch
@@ -62,6 +63,9 @@ def trace(model: nn.Module) -> list[dict]:
         elif isinstance(layer, nn.Flatten):
             # El vector se documenta en la tabla; no añade un volumen redundante.
             label, kind, detail = "Flatten", "flatten", "reorganiza; sin pesos"
+        elif isinstance(layer, nn.Dropout2d):
+            label, kind = f"Dropout2d\np={layer.p:g}", "regularization"
+            detail = "mapas completos por muestra; solo train; sin pesos ni cambio espacial"
         elif isinstance(layer, nn.Dropout):
             label, kind, detail = f"Dropout\np={layer.p:g}", "head", "solo durante entrenamiento"
         elif isinstance(layer, nn.Linear):
@@ -75,7 +79,7 @@ def trace(model: nn.Module) -> list[dict]:
     has_bn = any(isinstance(layer, nn.BatchNorm2d) for layer in model.modules())
     for layer in model.modules():
         if isinstance(layer, (PhaseRepresentation, nn.Conv2d, nn.MaxPool2d, nn.AdaptiveAvgPool2d,
-                              nn.Flatten, nn.Dropout, nn.Linear)):
+                              nn.Flatten, nn.Dropout, nn.Dropout2d, nn.Linear)):
             handles.append(layer.register_forward_hook(record))
     try:
         model.eval()
@@ -108,7 +112,8 @@ def draw(steps: list[dict], title: str, subtitle: str, params: int, path: Path) 
     ax.axis("off")
     navy, muted = "#17283f", "#61748c"
     palette = {"input": ("#e7efff", "#83ade9"), "conv": ("#e3f3ed", "#75bda7"),
-               "pool": ("#fff0df", "#e8a358"), "head": ("#efe7f6", "#a188c1")}
+               "pool": ("#fff0df", "#e8a358"), "head": ("#efe7f6", "#a188c1"),
+               "regularization": ("#fce8ed", "#c78096")}
     ax.text(-0.5, 4.55, title, fontsize=27, color=navy, fontfamily="DejaVu Serif")
     ax.text(-0.5, 4.12, subtitle, fontsize=15, color=muted)
     # Cada ancho indica canales de forma esquemática; altura disminuye con H/W.
@@ -142,9 +147,13 @@ def draw(steps: list[dict], title: str, subtitle: str, params: int, path: Path) 
     ax.add_patch(FancyBboxPatch((-0.5, -2.15), n + 1.85, 1.25, boxstyle="round,pad=0.12",
                                facecolor="#edf3fc", edgecolor="#aac5ed", linewidth=1.5))
     ax.text(-0.22, -1.15, f"{params:,} parámetros entrenables".replace(",", "."), fontsize=15, color=navy)
-    ax.text(-0.22, -1.5, "Azul: entrada · Verde: convolución · Naranja: reducción espacial · Violeta: cabeza de salida", fontsize=13, color=navy)
+    legend = "Azul: entrada · Verde: convolución · Naranja: reducción espacial · Violeta: cabeza de salida"
+    if any(step["kind"] == "regularization" for step in steps):
+        legend += " · Rosa: regularización en train"
+    ax.text(-0.22, -1.5, legend, fontsize=13, color=navy)
     ax.text(-0.22, -1.84, "Volúmenes esquemáticos; dimensiones exactas bajo cada capa. BCEWithLogitsLoss recibe el logit. Uso educativo, no clínico.", fontsize=12, color=muted)
-    fig.savefig(path.with_suffix(".svg"), bbox_inches="tight")
+    # IDs y metadatos estables: regenerar no debería ensuciar Git solo por fecha.
+    fig.savefig(path.with_suffix(".svg"), bbox_inches="tight", metadata={"Date": None})
     fig.savefig(path.with_suffix(".png"), dpi=120, bbox_inches="tight")
     plt.close(fig)
 
@@ -167,7 +176,7 @@ def write_sheet(directory: Path, title: str, model: nn.Module, explanation: str,
     content += f"\n\nLas formas omiten el batch `B`. {bn_note}\n"
     content += f"\nAntes del promedio adaptativo, cada posición tiene un campo receptivo teórico de **{local_rf}×{local_rf} píxeles**. El promedio combina posiciones espaciales; no equivale a localizar un tumor.\n"
     content += "\nLas convoluciones tienen stride 1 y padding 1; cada MaxPool 2×2 tiene stride 2. ReLU aporta no linealidad. La sigmoide se aplica para evaluar, después del logit. La media de probabilidades por paciente es la agregación inicial, pendiente de selección con validación.\n"
-    content += "\n## Imágenes y regeneración\n\n[SVG vectorial](arquitectura.svg) · [PNG](arquitectura.png). Las etiquetas y dimensiones se obtienen ejecutando la red con una entrada ficticia; no se leen imágenes de pacientes.\n\n```bash\npython -m src.document_architectures\n```\n\nUso educativo y de investigación, sin validez clínica.\n"
+    content += f"\n## Imágenes y regeneración\n\n[SVG vectorial](arquitectura.svg) · [PNG](arquitectura.png). Las etiquetas y dimensiones se obtienen ejecutando la red con una entrada ficticia; no se leen imágenes de pacientes.\n\n```bash\npython -m src.document_architectures --only {directory.name}\n```\n\nEste comando no regenera otras fichas. Los SVG tienen identificadores estables y no incluyen fechas de generación.\n\nUso educativo y de investigación, sin validez clínica.\n"
     (directory / "README.md").write_text(content, encoding="utf-8")
 
 
@@ -177,6 +186,10 @@ def main(only: str | None = None) -> None:
          "Tres bloques Conv–ReLU–Pool, canales 8/16/32. Resume a 4×4 y conecta 512 valores a un logit. Su objetivo fue memorizar un subconjunto pequeño para comprobar el cableado; no es una estimación de generalización."),
     ]
     specifications = [
+        ("E14_spatial_dropout_010", "E14 · Dropout espacial 0,1", "E14_spatial_dropout_010.json", ["E14_spatial_dropout_010.json"],
+         "Variante controlada de E13_50epochs: tras la segunda Conv–BN–ReLU de cada bloque se añade Dropout2d con p=0,1. Durante entrenamiento anula aleatoriamente mapas aprendidos completos por muestra y escala los supervivientes por 1/(1−p); en evaluación no anula ninguno. No se borran fases PRE/EARLY/LATE ni se modifica la imagen. Conserva ocho convoluciones, cuatro pools intermedios, 294.129 parámetros y campo receptivo local 106×106. Hipótesis: limitar la dependencia de mapas concretos podría mejorar generalización; también podría causar infraajuste. La forma de salida del bloque no cambia. Se conserva dropout final 0,3, diferencias firmadas, batch 16, LR inicial 0,001, weight decay 0,0001, BCE normal, seed 42, fold 0, 50 épocas y paciencia 51. No tiene resultados científicos todavía; comparar con E13_50epochs en el mismo dispositivo y precisión. Ver [protocolo de comparación](../DROPOUT_ESPACIAL.md)."),
+        ("E15_spatial_dropout_020", "E15 · Dropout espacial 0,2", "E15_spatial_dropout_020.json", ["E15_spatial_dropout_020.json"],
+         "Misma arquitectura de E14 con p=0,2 en los cuatro Dropout2d. Respecto a E13_50epochs solo cambia spatial_dropout de 0 a 0,2; respecto a E14 cambia solo su intensidad. No se eliminan canales de forma permanente ni se añaden parámetros. Cada bloque conserva dimensiones, kernel, padding, stride y campo receptivo. Busca comprobar si una regularización moderada evita depender de pocos mapas; no hay mejora garantizada. Se mantienen todos los ajustes de E13_50epochs, incluyendo dropout final 0,3, 50 épocas, paciencia 51 y selección por ROC-AUC por paciente. No hay resultados científicos todavía; primero probar E14, no lanzar ambos en paralelo al entrenamiento actual. Ver [protocolo](../DROPOUT_ESPACIAL.md)."),
         ("E13_phase_differences", "E13 · Realce explícito entre fases", "E13_phase_differences.json", ["E13_phase_differences.json", "E13_50epochs.json"],
          "La entrada externa sigue siendo PRE/EARLY/LATE en [0,1], con forma [3,256,256]. Dentro del modelo una operación fija conserva PRE y calcula EARLY−PRE y LATE−EARLY: tres canales, cero parámetros nuevos y sin recortar negativos. Las ocho convoluciones, cuatro MaxPool, BatchNorm, GAP y dropout son los de A04/E05; total 294.129 parámetros y campo receptivo local 106×106. Se conserva LR inicial 0,001 y todos los ajustes de E05 Mac. Es un cambio de representación invertible, no información nueva ni una CNN más grande: EARLY=PRE+(EARLY−PRE), LATE=EARLY+(LATE−EARLY). Hipótesis: presentar directamente los cambios temporales podría facilitar optimización. La primera convolución original ya podría aprender restas, por lo que no hay mejora garantizada. Las escalas/correlaciones de entrada cambian y pueden afectar la optimización y BatchNorm; esto forma parte del experimento. E13 completó diez épocas en Mac MPS: mejor época 10, ROC-AUC 0,572480 y AP 0,350860; 421,48 segundos. No supera la referencia E05 Mac (ROC-AUC 0,586895). El mejor checkpoint al final no demuestra convergencia ni que más épocas ayuden; revisar diagnóstico train/validación antes de decidir. Ver [protocolo E13](../REALCE_E13.md)."),
         ("A02_dos_convoluciones", "A02 · Dos convoluciones antes del pooling", "E02_base_normal.json", ["E02_base_normal.json", "E03_base_weighted.json"],

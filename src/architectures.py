@@ -22,6 +22,7 @@ class BaseCNNConfig:
     dropout: float = 0.30
     pool_position: str = "after_convolutions"
     input_representation: str = "raw"
+    spatial_dropout: float = 0.0
 
     def __post_init__(self) -> None:
         if self.input_representation not in {"raw", "pre_differences"}:
@@ -34,6 +35,8 @@ class BaseCNNConfig:
             raise ValueError("kernel_size debe ser impar y positivo")
         if not 0 <= self.dropout < 1:
             raise ValueError("dropout debe estar en [0, 1)")
+        if not 0 <= self.spatial_dropout < 1:
+            raise ValueError("spatial_dropout debe estar en [0, 1)")
         if self.pool_position not in {"after_convolutions", "between_convolutions"}:
             raise ValueError("pool_position no reconocido")
         if self.pool_position == "between_convolutions" and self.convolutions_per_block < 2:
@@ -56,6 +59,7 @@ class ConvBlock(nn.Module):
         kernel_size: int,
         use_batch_norm: bool,
         pool_position: str,
+        spatial_dropout: float = 0.0,
     ) -> None:
         super().__init__()
         padding = kernel_size // 2
@@ -80,6 +84,11 @@ class ConvBlock(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.pool_position = pool_position
         self.first_convolution_end = 3 if use_batch_norm else 2
+        # No mueve ni renombra capas aprendidas: los checkpoints anteriores
+        # conservan sus claves. Identity no consume aleatoriedad cuando p=0.
+        self.spatial_dropout = (
+            nn.Dropout2d(spatial_dropout) if spatial_dropout > 0 else nn.Identity()
+        )
 
     def forward(self, image: Tensor) -> Tensor:
         for layer_index, layer in enumerate(self.features, start=1):
@@ -91,7 +100,9 @@ class ConvBlock(nn.Module):
                 image = self.pool(image)
         if self.pool_position == "after_convolutions":
             image = self.pool(image)
-        return image
+        # En train enmascara mapas aprendidos completos, no las fases de entrada.
+        # En eval es identidad; resolución y número de canales nunca cambian.
+        return self.spatial_dropout(image)
 
 
 class BreastPCRNet(nn.Module):
@@ -117,6 +128,7 @@ class BreastPCRNet(nn.Module):
                     kernel_size=config.kernel_size,
                     use_batch_norm=config.use_batch_norm,
                     pool_position=config.pool_position,
+                    spatial_dropout=config.spatial_dropout,
                 )
             )
             in_channels = out_channels
