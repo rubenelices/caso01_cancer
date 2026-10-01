@@ -59,5 +59,6 @@ Toda arquitectura nueva debe incorporarse a este catálogo con hipótesis, orden
 - [E13 · Realce explícito entre fases](E13_phase_differences/README.md): misma CNN y ajustes E05 Mac; operación fija PRE, EARLY−PRE, LATE−EARLY dentro del modelo, sin parámetros nuevos.
 - [Protocolo y ejecución E13](REALCE_E13.md): compatibilidad train/evaluación/web, prueba técnica y comparación prevista.
 - [Diagnóstico E13](DIAGNOSTICO_E13.md): diferencia train/validación y copia BatchNorm; sin entrenamiento ni test.
+- [E13 · Prueba de 50 épocas](E13_ENTRENAMIENTO_LARGO.md): misma arquitectura, paciencia 51 y rutas nuevas; autorizada por el estudiante, sin resultados todavía.
 
 Uso educativo y de investigación, sin validez clínica.

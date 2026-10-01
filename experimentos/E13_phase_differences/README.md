@@ -9,6 +9,7 @@ Total: **294.129 parámetros entrenables**.
 Configuraciones asociadas:
 
 - [E13_phase_differences.json](../../configs/experiments/E13_phase_differences.json)
+- [E13_50epochs.json](../../configs/experiments/E13_50epochs.json): misma arquitectura, 50 épocas sin parada temprana; [protocolo](../E13_ENTRENAMIENTO_LARGO.md).
 
 ## Recorrido de las capas
 

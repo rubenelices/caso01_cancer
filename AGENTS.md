@@ -319,3 +319,12 @@ datos, pesos e informes completos quedan fuera. Pasos en
 pendiente; no reinstalar PyTorch ROCm ni entrenar modelos largos automáticamente.
 La copia exacta del índice pasó 96 tests, smoke E13 completo (4,20 s CPU) y
 benchmark técnico corto CPU. Excluidos web, inference/app, Flask y datasets.
+
+Nueva autorización explícita: el estudiante pidió preparar rápidamente un
+experimento largo para dejarlo en GPU universitaria y commitearlo. Se creó
+`E13_50epochs.json`: mismos datos/modelo/ajustes E13, 50 épocas y paciencia 51
+(early stopping inalcanzable), rutas propias y entrenamiento desde cero.
+No es E14 ni resume del Mac; scheduler y selección de best.pt siguen activos.
+Protocolo `experimentos/E13_ENTRENAMIENTO_LARGO.md`. El estudiante lo lanzará;
+agente no ejecuta entrenamientos largos. No confundir con autorización antigua
+de no prolongar: esta petición sí lo autoriza. Más épocas no garantizan mejora.

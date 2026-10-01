@@ -347,3 +347,9 @@ Diagnóstico ya completado en MPS: train AUC 0,788197 vs validación 0,572480;
 copia BN validación 0,557964. No resuelve la generalización; documentación
 en `experimentos/DIAGNOSTICO_E13.md`. No hay autorización para otro modelo
 ni entrenamiento largo; acordar una hipótesis controlada de generalización.
+
+Actualización por petición posterior explícita: se autoriza E13_50epochs para
+dejar corriendo en universidad. Configuración nueva con 50 épocas, paciencia 51,
+misma CNN y restantes ajustes E13, rutas propias; no resume ni E14 espacial.
+Protocolo en `experimentos/E13_ENTRENAMIENTO_LARGO.md`. Mantener mejor checkpoint
+por ROC-AUC, scheduler activo y test cerrado; registrar trayectoria aunque empeore.
