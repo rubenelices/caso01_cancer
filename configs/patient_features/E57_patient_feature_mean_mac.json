@@ -1,0 +1,46 @@
+{
+  "schema": "patient_features_v1",
+  "pool_stage": "features",
+  "experiment": {
+    "experiment_id": "E57_patient_feature_mean_mac",
+    "description": "Cabeza propia128-32-1; pool_stage=features; control pareado",
+    "data": {
+      "root": "breastdcedl",
+      "validation_fold": 0,
+      "batch_size": 16,
+      "num_workers": 0,
+      "pin_memory": false,
+      "train_patients_per_batch": 2
+    },
+    "model": {
+      "channels": [
+        16,
+        32,
+        64,
+        128
+      ],
+      "convolutions_per_block": 2,
+      "kernel_size": 3,
+      "use_batch_norm": true,
+      "dropout": 0.3,
+      "pool_position": "between_convolutions",
+      "input_representation": "pre_differences"
+    },
+    "training": {
+      "epochs": 50,
+      "learning_rate": 0.001,
+      "weight_decay": 0.001,
+      "loss": "normal",
+      "threshold": 0.5,
+      "seed": 42,
+      "early_stopping_patience": 10,
+      "scheduler_patience": 3,
+      "scheduler_factor": 0.5,
+      "monitor": "patient_roc_auc",
+      "mixed_precision": false,
+      "objective": "patient_mean_probability"
+    },
+    "output_dir": "reports/patient_features/E57_patient_feature_mean_mac/fold_0_seed_42",
+    "checkpoint_dir": "checkpoints/E57_patient_feature_mean_mac/fold_0_seed_42"
+  }
+}

@@ -33,6 +33,7 @@ def trace(model: nn.Module) -> list[dict]:
     steps = [{"label": "Entrada\n3 fases DCE", "shape": (3, 256, 256),
               "kind": "input", "parameters": 0, "rf": 1, "jump": 1}]
     handles = []
+    original_modes = {layer: layer.training for layer in model.modules()}
     rf, jump = 1, 1
 
     def record(layer, inputs, output):
@@ -68,6 +69,10 @@ def trace(model: nn.Module) -> list[dict]:
             detail = "mapas completos por muestra; solo train; sin pesos ni cambio espacial"
         elif isinstance(layer, nn.Dropout):
             label, kind, detail = f"Dropout\np={layer.p:g}", "head", "solo durante entrenamiento"
+        elif isinstance(layer, nn.BatchNorm2d):
+            label, kind, detail = "BatchNorm2d", "normalization", "estadísticas por lote/train; acumuladas/eval"
+        elif isinstance(layer, nn.ReLU):
+            label, kind, detail = "ReLU", "activation", "max(0,x); sin parámetros"
         elif isinstance(layer, nn.Linear):
             label, kind = "Lineal\n1 logit", "head"
             detail = f"{layer.in_features} → {layer.out_features}"
@@ -79,7 +84,7 @@ def trace(model: nn.Module) -> list[dict]:
     has_bn = any(isinstance(layer, nn.BatchNorm2d) for layer in model.modules())
     for layer in model.modules():
         if isinstance(layer, (PhaseRepresentation, nn.Conv2d, nn.MaxPool2d, nn.AdaptiveAvgPool2d,
-                              nn.Flatten, nn.Dropout, nn.Dropout2d, nn.Linear)):
+                              nn.Flatten, nn.Dropout, nn.Dropout2d, nn.Linear, nn.BatchNorm2d, nn.ReLU)):
             handles.append(layer.register_forward_hook(record))
     try:
         model.eval()
@@ -88,6 +93,8 @@ def trace(model: nn.Module) -> list[dict]:
     finally:
         for handle in handles:
             handle.remove()
+        for layer, mode in original_modes.items():
+            layer.training = mode
     if isinstance(model, MinimalCNN):
         # La CNN mínima realiza flatten con torch.flatten, sin módulo independiente.
         linear_index = next(i for i, step in enumerate(steps) if step["label"].startswith("Lineal"))
@@ -103,8 +110,9 @@ def dimensions(shape: tuple) -> str:
     return " × ".join(map(str, shape))
 
 
-def draw(steps: list[dict], title: str, subtitle: str, params: int, path: Path) -> None:
-    visible = [step for step in steps if step["kind"] != "flatten"]
+def draw(steps: list[dict], title: str, subtitle: str, params: int, path: Path,
+         *, patient_output: bool = False) -> None:
+    visible = [step for step in steps if step["kind"] not in {"flatten", "normalization", "activation"}]
     n = len(visible)
     fig, ax = plt.subplots(figsize=(max(22, n * 1.65), 10))
     fig.patch.set_facecolor("white")
@@ -142,8 +150,9 @@ def draw(steps: list[dict], title: str, subtitle: str, params: int, path: Path) 
     ax.annotate("", xy=(n + 0.10, 1.48), xytext=(n - 0.55, 1.48),
                 arrowprops=dict(arrowstyle="-|>", color=navy, lw=2.4))
     ax.text(n + 0.13, 1.8, "Sigmoide", fontsize=13, color=navy)
-    ax.text(n + 0.13, 1.28, "Probabilidad\ndel corte", fontsize=13, color=muted, linespacing=1.6)
-    ax.text(n + 0.13, 0.42, "↓ Media de cortes\npor paciente", fontsize=12, color=muted, linespacing=1.5)
+    ax.text(n + 0.13, 1.28, "Probabilidad\nde la paciente" if patient_output else "Probabilidad\ndel corte", fontsize=13, color=muted, linespacing=1.6)
+    if not patient_output:
+        ax.text(n + 0.13, 0.42, "↓ Media de cortes\npor paciente", fontsize=12, color=muted, linespacing=1.5)
     ax.add_patch(FancyBboxPatch((-0.5, -2.15), n + 1.85, 1.25, boxstyle="round,pad=0.12",
                                facecolor="#edf3fc", edgecolor="#aac5ed", linewidth=1.5))
     ax.text(-0.22, -1.15, f"{params:,} parámetros entrenables".replace(",", "."), fontsize=15, color=navy)
@@ -180,7 +189,63 @@ def write_sheet(directory: Path, title: str, model: nn.Module, explanation: str,
     (directory / "README.md").write_text(content, encoding="utf-8")
 
 
+def document_patient_feature_architecture(folder):
+    from src.patient_feature_model import PatientFeatureNet, group_features
+    from src.train_patient_features import load_spec
+    spec, cfg = load_spec(ROOT / 'configs/patient_features' / (folder + '.json'))
+    model = PatientFeatureNet(cfg.model).eval()
+    directory = ROOT / 'experimentos' / folder
+    directory.mkdir(parents=True, exist_ok=True)
+    title = ('E56 · Cabeza no lineal: control por corte' if spec['pool_stage'] == 'probabilities'
+             else 'E57 · Características combinadas por paciente')
+    steps = trace(model)
+    for step in steps:
+        if step.get('detail') == '128 → 32':
+            step['label'] = 'Lineal + ReLU\n128 → 32'
+    assert sum(s['parameters'] for s in steps) == trainable_parameter_count(model) == 298161
+    draw(steps, title, 'Ruta real de un corte; cabeza compartida 128 → 32 → 1.',
+         trainable_parameter_count(model), directory / 'arquitectura')
+    explanation = ('CNN propia desde cero compartida entre cortes. Ocho convoluciones3×3/'
+        'padding1/stride1, canales16/32/64/128, ocho BN/ReLU y cuatro MaxPool2×2 intermedios. '
+        'GAP128 y cabeza Linear128→32(4128 parámetros)→ReLU→Dropout0,3→Linear32→1(33). '
+        'Extractor294000, total298161, RF local106. [Protocolo y restricciones](../CARACTERISTICAS_PACIENTE.md). '
+        'Cambios frente E19: cabeza, pérdida/lotes por paciente y agregación; no aislarlos. '
+        'Solo E57−E56 compara punto de agregación con misma cabeza y lotes. '
+        'La granularidad del dropout cambia necesariamente con ese punto. '
+        'Esta figura es la ruta de un corte: no representa diez cortes en serie. '
+        'Pendiente científico; mantener test cerrado. Los checkpoints nuevos requieren '
+        'load_feature_checkpoint; NO son intercambiables con el cargador web actual.')
+    write_sheet(directory, title, model, explanation,
+                ['../patient_features/' + folder + '.json'], steps)
+    # Formas de la media y la cabeza comprobadas con dos vectores sintéticos.
+    with torch.inference_mode():
+        f = torch.zeros(2, 128)
+        m, _, _ = group_features(f, torch.zeros(2), ['p', 'p'])
+        hidden = model.head[1](model.head[0](m))
+        output = model.classify_features(m)
+    bag_steps = [dict(label='Cortes compartidos\nN × 128', shape=(f.shape[1],), kind='input', parameters=0, rf=106, jump=16),
+                 dict(label='Media por paciente\n128', shape=tuple(m.shape[1:]), kind='head', parameters=0, rf=106, jump=16),
+                 dict(label='Lineal + ReLU\n32', shape=tuple(hidden.shape[1:]), kind='head', parameters=4128, rf=106, jump=16),
+                 dict(label='Dropout\np=0,3', shape=tuple(hidden.shape[1:]), kind='head', parameters=0, rf=106, jump=16),
+                 dict(label='Lineal\n1 logit', shape=(1,), kind='head', parameters=33, rf=106, jump=16)]
+    assert output.shape == (1,)
+    draw(bag_steps, 'Ruta de bolsa de características · E57',
+         'Mismo extractor para cada corte; media sin pesos ni orden axial; N=1 también válido.',
+         trainable_parameter_count(model), directory / 'bolsa', patient_output=True)
+    with (directory / 'README.md').open('a') as stream:
+        stream.write('\n## Ruta alternativa de bolsa\n\n![Media de características](bolsa.png)\n\n'
+            '[SVG bolsa](bolsa.svg). La bolsa se usa en train SOLO en E57; en E56 es '
+            'diagnóstico secundario. La media no aprende interacciones por pares ni orden axial. '
+            'No tiene kernel/padding/stride; combina N vectores128→1 vector128. N=1 '
+            'es idéntico al forward por corte en eval.\n')
+    print('Documentado: ' + folder)
+
+
 def main(only: str | None = None) -> None:
+    feature_folders = ("E56_nonlinear_cut_control_mac", "E57_patient_feature_mean_mac")
+    if only in feature_folders:
+        document_patient_feature_architecture(only)
+        return
     catalog = [
         ("A01_minima", "A01 · CNN mínima de depuración", MinimalCNN(), [],
          "Tres bloques Conv–ReLU–Pool, canales 8/16/32. Resume a 4×4 y conecta 512 valores a un logit. Su objetivo fue memorizar un subconjunto pequeño para comprobar el cableado; no es una estimación de generalización."),
