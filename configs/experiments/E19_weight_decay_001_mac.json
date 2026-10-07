@@ -1,0 +1,40 @@
+{
+  "experiment_id": "E19_weight_decay_001_mac",
+  "description": "E17 con weight decay 0.001; sin aumentos",
+  "data": {
+    "root": "breastdcedl",
+    "validation_fold": 0,
+    "batch_size": 16,
+    "num_workers": 0,
+    "pin_memory": false
+  },
+  "model": {
+    "channels": [
+      16,
+      32,
+      64,
+      128
+    ],
+    "convolutions_per_block": 2,
+    "kernel_size": 3,
+    "use_batch_norm": true,
+    "dropout": 0.3,
+    "pool_position": "between_convolutions",
+    "input_representation": "pre_differences"
+  },
+  "training": {
+    "epochs": 50,
+    "learning_rate": 0.001,
+    "weight_decay": 0.001,
+    "loss": "normal",
+    "threshold": 0.5,
+    "seed": 42,
+    "early_stopping_patience": 10,
+    "scheduler_patience": 3,
+    "scheduler_factor": 0.5,
+    "monitor": "patient_roc_auc",
+    "mixed_precision": false
+  },
+  "output_dir": "reports/experiments/E19_weight_decay_001_mac/fold_0_seed_42",
+  "checkpoint_dir": "checkpoints/E19_weight_decay_001_mac/fold_0_seed_42"
+}

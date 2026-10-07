@@ -1,0 +1,44 @@
+{
+  "experiment_id": "E51_label_smoothing_mac",
+  "description": "E19 con objetivos train suavizados epsilon0.1; evaluación binaria intacta",
+  "data": {
+    "root": "breastdcedl",
+    "validation_fold": 0,
+    "batch_size": 16,
+    "num_workers": 0,
+    "pin_memory": false
+  },
+  "model": {
+    "channels": [
+      16,
+      32,
+      64,
+      128
+    ],
+    "convolutions_per_block": 2,
+    "kernel_size": 3,
+    "use_batch_norm": true,
+    "dropout": 0.3,
+    "pool_position": "between_convolutions",
+    "input_representation": "pre_differences"
+  },
+  "training": {
+    "epochs": 50,
+    "learning_rate": 0.001,
+    "weight_decay": 0.001,
+    "loss": "normal",
+    "threshold": 0.5,
+    "seed": 42,
+    "early_stopping_patience": 10,
+    "scheduler_patience": 3,
+    "scheduler_factor": 0.5,
+    "monitor": "patient_roc_auc",
+    "mixed_precision": false,
+    "label_smoothing": {
+      "enabled": true,
+      "epsilon": 0.1
+    }
+  },
+  "output_dir": "reports/experiments/E51_label_smoothing_mac/fold_0_seed_42",
+  "checkpoint_dir": "checkpoints/E51_label_smoothing_mac/fold_0_seed_42"
+}

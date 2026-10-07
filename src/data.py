@@ -76,6 +76,7 @@ class LoaderConfig:
     pin_memory: bool = False
     persistent_workers: bool = False
     seed: int = 42
+    train_patients_per_batch: int | None = None
 
     def __post_init__(self) -> None:
         if self.batch_size < 1:
@@ -84,6 +85,10 @@ class LoaderConfig:
             raise ValueError("num_workers no puede ser negativo")
         if self.persistent_workers and self.num_workers == 0:
             raise ValueError("persistent_workers requiere num_workers > 0")
+        if (self.train_patients_per_batch is not None
+                and (type(self.train_patients_per_batch) is not int
+                     or self.train_patients_per_batch < 1)):
+            raise ValueError("train_patients_per_batch debe ser un entero positivo o null")
 
 
 @dataclass(frozen=True)
@@ -412,13 +417,20 @@ def create_dataloaders(
     validation_dataset = BreastDCEDataset(splits.validation, root)
     test_dataset = BreastDCEDataset(splits.test, root)
 
-    return DataLoaders(
-        train=DataLoader(
+    if config.train_patients_per_batch is None:
+        train_loader = DataLoader(train_dataset, shuffle=True, generator=generator, **common)
+    else:
+        from src.patient_training import PatientBatchSampler
+        train_common = {key: value for key, value in common.items() if key != "batch_size"}
+        train_loader = DataLoader(
             train_dataset,
-            shuffle=True,
+            batch_sampler=PatientBatchSampler(train_dataset.rows, config.train_patients_per_batch, generator),
             generator=generator,
-            **common,
-        ),
+            **train_common,
+        )
+
+    return DataLoaders(
+        train=train_loader,
         validation=DataLoader(validation_dataset, shuffle=False, **common),
         test=DataLoader(test_dataset, shuffle=False, **common),
     )

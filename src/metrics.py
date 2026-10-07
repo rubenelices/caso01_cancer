@@ -15,6 +15,23 @@ from sklearn.metrics import (
 )
 
 
+def validate_binary_inputs(
+    targets: Sequence[float], probabilities: Sequence[float]
+) -> tuple[np.ndarray, np.ndarray]:
+    """Validar antes de convertir: 0,7 no debe transformarse en una etiqueta 0."""
+    labels = np.asarray(targets, dtype=float)
+    scores = np.asarray(probabilities, dtype=float)
+    if labels.ndim != 1 or scores.ndim != 1 or len(labels) != len(scores):
+        raise ValueError("targets y probabilities deben ser vectores de igual longitud")
+    if not len(labels):
+        raise ValueError("No hay predicciones para evaluar")
+    if not np.isin(labels, [0, 1]).all():
+        raise ValueError("targets debe contener solo 0 y 1")
+    if not np.isfinite(scores).all() or ((scores < 0) | (scores > 1)).any():
+        raise ValueError("probabilities debe contener valores finitos en [0, 1]")
+    return labels.astype(int), scores
+
+
 def aggregate_by_patient(
     patient_ids: Sequence[str],
     targets: Sequence[float],
@@ -28,11 +45,16 @@ def aggregate_by_patient(
         raise ValueError("method debe ser mean, median, max o vote")
     if not 0 <= slice_threshold <= 1:
         raise ValueError("slice_threshold debe estar en [0, 1]")
+    labels, scores = validate_binary_inputs(targets, probabilities)
+    identifiers = pd.Series(list(patient_ids), dtype="string")
+    if (len(identifiers) != len(labels) or identifiers.isna().any()
+            or identifiers.str.strip().eq("").any()):
+        raise ValueError("patient_ids debe contener identificadores válidos de igual longitud")
     frame = pd.DataFrame(
         {
-            "patient_id": list(patient_ids),
-            "target": np.asarray(targets, dtype=int),
-            "probability": np.asarray(probabilities, dtype=float),
+            "patient_id": identifiers.to_numpy(),
+            "target": labels,
+            "probability": scores,
         }
     )
     if frame.empty:
@@ -57,16 +79,7 @@ def binary_metrics(
     probabilities: Sequence[float],
     threshold: float = 0.5,
 ) -> dict[str, Any]:
-    y_true = np.asarray(targets, dtype=int)
-    y_prob = np.asarray(probabilities, dtype=float)
-    if y_true.ndim != 1 or y_prob.ndim != 1 or len(y_true) != len(y_prob):
-        raise ValueError("targets y probabilities deben ser vectores de igual longitud")
-    if len(y_true) == 0:
-        raise ValueError("No hay predicciones para evaluar")
-    if not np.isin(y_true, [0, 1]).all():
-        raise ValueError("targets debe contener solo 0 y 1")
-    if not np.isfinite(y_prob).all() or ((y_prob < 0) | (y_prob > 1)).any():
-        raise ValueError("probabilities debe contener valores finitos en [0, 1]")
+    y_true, y_prob = validate_binary_inputs(targets, probabilities)
     if not 0 <= threshold <= 1:
         raise ValueError("threshold debe estar en [0, 1]")
     y_pred = (y_prob >= threshold).astype(int)

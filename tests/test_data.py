@@ -143,6 +143,8 @@ def test_splits_and_loader_sampling_are_correct(tmp_path: Path) -> None:
 
 
 def test_real_public_split_is_disjoint_by_patient() -> None:
+    if not Path('breastdcedl/metadata/samples.csv').is_file():
+        pytest.skip('Comprobación de integración requiere el paquete docente local, no versionado')
     samples = load_samples("breastdcedl")
     splits = split_by_patient_fold(samples, validation_fold=0)
     train = set(splits.train.patient_id)

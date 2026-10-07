@@ -1,4 +1,4 @@
-"""Aumentos geométricos de train sobre PRE/EARLY/LATE como un solo tensor."""
+"""Aumentos de train compartidos por PRE/EARLY/LATE, nunca aumentos RGB."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 from torch.nn import functional as F
+from src.horizontal_flip import HorizontalFlipConfig, SharedRandomHorizontalFlip
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,95 @@ class SharedRandomAffine:
         return apply_shared_affine(image, self.sample_parameters())
 
 
-def build_train_transform(config: AugmentationConfig) -> SharedRandomAffine | None:
-    """Desactivado por defecto para preservar todos los experimentos anteriores."""
-    return SharedRandomAffine(config) if config.enabled else None
+@dataclass(frozen=True)
+class IntensityAugmentationConfig:
+    """Ganancia uniforme compartida: g ~ U(1-delta, 1+delta), sin clipping.
+
+    Separada de la geometría para activar una única variable en E25.
+    Los valores por defecto no cambian ningún experimento anterior.
+    """
+
+    enabled: bool = False
+    max_gain_delta: float = 0.1
+
+    def __post_init__(self) -> None:
+        if type(self.enabled) is not bool:
+            raise ValueError("intensity_augmentation.enabled debe ser booleano")
+        if (type(self.max_gain_delta) not in (int, float)
+                or not math.isfinite(self.max_gain_delta)
+                or not 0 <= self.max_gain_delta <= 0.25):
+            raise ValueError("max_gain_delta debe ser finito entre 0 y 0.25")
+
+
+def apply_shared_gain(image: Tensor, gain: float) -> Tensor:
+    """Multiplica las tres fases por UN escalar positivo sin alterar la entrada.
+
+    Entrada del cargador en [0,1]. Salida de entrenamiento hasta 1.25 (E25: 1.1).
+    No recorta a 1: (g*EARLY - g*PRE) = g*(EARLY-PRE), también con negativos.
+    No es normalización, simulación física de contraste ni cambio de etiquetas.
+    """
+    if image.shape != (3, 256, 256) or image.dtype != torch.float32:
+        raise ValueError("La ganancia exige tensor float32 [3,256,256]")
+    if not torch.isfinite(image).all() or image.min() < 0 or image.max() > 1:
+        raise ValueError("La ganancia exige fases finitas en [0,1] antes del aumento")
+    if type(gain) not in (int, float) or not math.isfinite(gain) or not .75 <= gain <= 1.25:
+        raise ValueError("gain debe ser un escalar finito entre 0.75 y 1.25")
+    return image if gain == 1 else image * gain
+
+
+class SharedRandomGain:
+    """Un factor nuevo por tripleta y lectura; no uno por canal ni por píxel."""
+
+    def __init__(self, config: IntensityAugmentationConfig) -> None:
+        self.config = config
+
+    def sample_gain(self, *, generator: torch.Generator | None = None) -> float:
+        if not self.config.enabled or self.config.max_gain_delta == 0:
+            return 1.0
+        return 1.0 + (2 * torch.rand((), generator=generator).item() - 1) * self.config.max_gain_delta
+
+    def __call__(self, image: Tensor) -> Tensor:
+        if not self.config.enabled or self.config.max_gain_delta == 0:
+            return image
+        return apply_shared_gain(image, self.sample_gain())
+
+
+class SharedTrainAugmentations:
+    """Composición serializable: geometría primero, ganancia después.
+
+    E25 solo usa ganancia. Se conserva esta composición para evitar dos pipelines
+    distintos si un experimento futuro autoriza combinar ambos aumentos.
+    """
+
+    def __init__(self, affine: SharedRandomAffine, gain: SharedRandomGain) -> None:
+        self.affine, self.gain = affine, gain
+
+    def __call__(self, image: Tensor) -> Tensor:
+        return self.gain(self.affine(image))
+
+
+class SharedTrainHorizontalFlip:
+    """Espejo primero, pipeline anterior después; solo se construye si activo."""
+    def __init__(self,previous,flip:SharedRandomHorizontalFlip) -> None:
+        self.previous,self.flip=previous,flip
+
+    def __call__(self,image:Tensor) -> Tensor:
+        return self.previous(self.flip(image))
+
+
+def build_train_transform(
+    config: AugmentationConfig,
+    intensity_config: IntensityAugmentationConfig | None = None,
+    horizontal_config: HorizontalFlipConfig | None = None,
+) -> SharedRandomAffine | SharedRandomGain | SharedTrainAugmentations | SharedTrainHorizontalFlip | SharedRandomHorizontalFlip | None:
+    """Desactivado por defecto; el camino antiguo conserva incluso el consumo RNG."""
+    affine = SharedRandomAffine(config) if config.enabled else None
+    if intensity_config is None or not intensity_config.enabled or intensity_config.max_gain_delta == 0:
+        previous = affine
+    else:
+        gain = SharedRandomGain(intensity_config)
+        previous = SharedTrainAugmentations(affine, gain) if affine is not None else gain
+    if horizontal_config is None or not horizontal_config.enabled or horizontal_config.probability == 0:
+        return previous
+    flip=SharedRandomHorizontalFlip(horizontal_config)
+    return SharedTrainHorizontalFlip(previous,flip) if previous is not None else flip

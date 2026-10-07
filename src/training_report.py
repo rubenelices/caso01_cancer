@@ -109,6 +109,8 @@ def save_training_dashboard(
     final_metrics: dict[str, Any],
     best_epoch: int,
     path: Path,
+    evaluated_weights: str = "trainable",
+    training_target_mode: str = "binary",
 ) -> None:
     """Guarda cuatro paneles para diagnosticar el entrenamiento de un vistazo."""
 
@@ -124,11 +126,14 @@ def save_training_dashboard(
     figure, axes = plt.subplots(2, 2, figsize=(12.5, 8.5))
 
     loss_axis = axes[0, 0]
-    loss_axis.plot(epochs, [row["train_loss"] for row in history], label="Train", marker="o")
+    train_label = ("Train BCE (objetivos suaves)" if training_target_mode == "smoothed_binary"
+                   else "Train (pesos entrenables)" if evaluated_weights == "ema" else "Train")
+    loss_axis.plot(epochs, [row["train_loss"] for row in history],
+                   label=train_label, marker="o")
     loss_axis.plot(
         epochs,
         [row["validation_loss"] for row in history],
-        label="Validacion",
+        label="Validacion (copia EMA)" if evaluated_weights == "ema" else "Validacion",
         marker="o",
     )
     if len(history) >= 5:
@@ -207,6 +212,8 @@ def save_training_dashboard(
 
     early = diagnostics["early_epoch_5_check"]
     subtitle = early["message"]
+    if evaluated_weights == "ema":
+        subtitle += "\nTrain y validación utilizan estados de pesos distintos (EMA)."
     if diagnostics["prediction_collapse"] != "none":
         subtitle += " Advertencia: el modelo predice una sola clase."
     figure.suptitle(f"Diagnostico del entrenamiento\n{subtitle}", fontsize=13)
